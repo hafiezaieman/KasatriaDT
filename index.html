@@ -13,7 +13,7 @@
             background: #000;
             overflow: hidden;
             font-family: Helvetica, Arial, sans-serif;
-            color: #000000
+            color: #fff
         }
 
         #login-screen {
@@ -25,16 +25,20 @@
             justify-content: center;
             gap: 16px;
             z-index: 20;
-            background: #f8f6f6
+            background: #000
         }
 
         #login {
             padding: 12px 24px;
             font-size: 16px;
             cursor: pointer;
-            border: 1px solid rgba(0, 149, 255, 0.956);
-            background: rgba(0, 149, 255, 0.956);
-            color: #fff
+            border: 1px solid rgba(127, 255, 212, .6);
+            background: rgba(127, 255, 212, .1);
+            color: #aef
+        }
+
+        #login:hover {
+            background: rgba(127, 255, 212, .3)
         }
 
         #msg {
@@ -54,16 +58,39 @@
 
         #menu button {
             margin: 0 4px;
-            padding: 8px 18px;
-            color: #fff;
-            background: rgba(0, 255, 255, .15);
-            border: 1px solid #0ff;
+            padding: 6px 16px;
+            font-size: 12px;
+            letter-spacing: 1px;
+            color: #8fd;
+            background: transparent;
+            border: 1px solid rgba(127, 255, 212, .5);
             cursor: pointer
         }
 
         #menu button:hover,
         #menu button.on {
-            background: rgba(0, 255, 255, .5)
+            background: rgba(127, 255, 212, .25);
+            color: #fff
+        }
+
+        #legend {
+            position: absolute;
+            right: 24px;
+            bottom: 16px;
+            z-index: 10;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border: 1px solid #e22;
+            font-size: 11px
+        }
+
+        #legend .bar {
+            width: 130px;
+            height: 8px;
+            border-radius: 2px;
+            background: linear-gradient(90deg, #EF3022, #FDCA35, #3A9F48)
         }
 
         .tile {
@@ -72,56 +99,63 @@
             box-sizing: border-box;
             padding: 6px;
             text-align: center;
-            border: 1px solid rgba(255, 255, 255, .5);
-            box-shadow: 0 0 10px rgba(255, 255, 255, .3);
+            border: 2px solid;
+            border-radius: 4px;
             cursor: default
         }
 
         .tile.red {
-            background: rgba(214, 40, 40, .75)
+            border-color: #EF3022;
+            background: rgba(239, 48, 34, .28);
+            box-shadow: 0 0 14px rgba(239, 48, 34, .6)
         }
 
         .tile.orange {
-            background: rgba(245, 150, 20, .75)
+            border-color: #FDCA35;
+            background: rgba(253, 202, 53, .25);
+            box-shadow: 0 0 14px rgba(253, 202, 53, .6)
         }
 
         .tile.green {
-            background: rgba(40, 175, 70, .75)
+            border-color: #3A9F48;
+            background: rgba(58, 159, 72, .28);
+            box-shadow: 0 0 14px rgba(58, 159, 72, .6)
         }
 
         .tile .top {
             display: flex;
             justify-content: space-between;
-            font-size: 12px;
-            font-weight: bold
+            font-size: 10px;
+            margin-bottom: 3px
         }
 
         .tile img {
-            width: 62px;
-            height: 62px;
+            display: block;
+            width: 100%;
+            height: 70px;
             object-fit: cover;
-            border-radius: 50%;
-            margin: 6px 0 4px;
-            border: 2px solid rgba(255, 255, 255, .7)
+            border-radius: 3px;
+            background: #222
         }
 
         .tile .name {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: bold;
+            margin-top: 4px;
             line-height: 1.15;
-            height: 28px;
+            height: 24px;
             overflow: hidden
         }
 
         .tile .interest {
-            font-size: 11px;
-            margin-top: 2px
+            font-size: 10px;
+            margin-top: 1px
         }
 
         .tile .nw {
-            font-size: 11px;
+            font-size: 10px;
             margin-top: 2px;
-            opacity: .95
+            font-weight: bold
         }
     </style>
 </head>
@@ -137,6 +171,7 @@
         <button id="table">TABLE</button><button id="sphere">SPHERE</button>
         <button id="helix">HELIX</button><button id="grid">GRID</button>
     </div>
+    <div id="legend">LOW <div class="bar"></div> High</div>
 
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script type="importmap">
@@ -150,10 +185,10 @@
         import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
         import { TrackballControls } from 'three/addons/controls/TrackballControls.js';
 
-        /* ====== CLIENT, SHEET ID ====== */
-        const CLIENT_ID = '445496542548-ru1crv8l7j6r4u37004is8s2ig7c90ft.apps.googleusercontent.com';
+        /* ====== CLIENT, SHEET, ID ====== */
+        const CLIENT_ID = '445496542548-ru1crv8l7j6r4u37004is8s2ig7c90ft.apps.googleusercontent.com'; 
         const SHEET_ID = '1T7JrJlPKyM7r4kZdI_u0r-aqHN7J0pIS-25jpgE0K9A';                              
-        const RANGE = 'Sheet1';                                    
+        const RANGE = 'Sheet1';                                     
         /* ======================================== */
 
         const msg = document.getElementById('msg');
@@ -186,6 +221,7 @@
                         });
                         document.getElementById('login-screen').style.display = 'none';
                         document.getElementById('menu').style.display = 'block';
+                        document.getElementById('legend').style.display = 'flex';
                         startViewer(data);
                     } catch (e) { msg.style.color = '#f88'; msg.textContent = 'Error: ' + e.message; }
                 }
@@ -210,7 +246,7 @@
 
             data.forEach(d => {
                 const el = document.createElement('div');
-                // Red < $100K, Orange $100K-$200K, Green > $200K
+                // Red < $100K, Orange/Yellow $100K-$200K, Green > $200K
                 el.className = 'tile ' + (d.nw > 200000 ? 'green' : d.nw >= 100000 ? 'orange' : 'red');
                 el.innerHTML = `
       <div class="top"><span>${esc(d.country)}</span><span>${esc(d.age)}</span></div>
@@ -225,7 +261,7 @@
             const N = objects.length;
             const make = (x, y, z) => { const o = new THREE.Object3D(); o.position.set(x, y, z); return o; };
 
-            // TABLE
+            // TABLE 20 x 10
             for (let i = 0; i < N; i++)
                 targets.table.push(make((i % 20) * 140 - 1330, -(Math.floor(i / 20) % 10) * 180 + 810, 0));
 
@@ -258,7 +294,6 @@
             const setLayout = id => {
                 current = targets[id];
                 buttons.forEach(b => b.classList.toggle('on', b.id === id));
-                // reset the view so each layout is visible from a sensible distance
                 camera.position.set(0, 0, id === 'grid' ? 5500 : id === 'table' ? 3000 : 3500);
                 camera.up.set(0, 1, 0); controls.reset?.();
             };
