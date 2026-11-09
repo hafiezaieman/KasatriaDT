@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>3D Tiles</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        html,
+        body {
+            margin: 0;
+            height: 100%;
+            background: #000;
+            overflow: hidden;
+            font-family: Helvetica, Arial, sans-serif;
+            color: #000000
+        }
+
+        #login-screen {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            z-index: 20;
+            background: #f8f6f6
+        }
+
+        #login {
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            border: 1px solid rgba(0, 149, 255, 0.956);
+            background: rgba(0, 149, 255, 0.956);
+            color: #fff
+        }
+
+        #msg {
+            font-size: 14px;
+            color: #f88;
+            min-height: 20px
+        }
+
+        #menu {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            z-index: 10;
+            display: none
+        }
+
+        #menu button {
+            margin: 0 4px;
+            padding: 8px 18px;
+            color: #fff;
+            background: rgba(0, 255, 255, .15);
+            border: 1px solid #0ff;
+            cursor: pointer
+        }
+
+        #menu button:hover,
+        #menu button.on {
+            background: rgba(0, 255, 255, .5)
+        }
+
+        .tile {
+            width: 120px;
+            height: 160px;
+            box-sizing: border-box;
+            padding: 6px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, .5);
+            box-shadow: 0 0 10px rgba(255, 255, 255, .3);
+            cursor: default
+        }
+
+        .tile.red {
+            background: rgba(214, 40, 40, .75)
+        }
+
+        .tile.orange {
+            background: rgba(245, 150, 20, .75)
+        }
+
+        .tile.green {
+            background: rgba(40, 175, 70, .75)
+        }
+
+        .tile .top {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            font-weight: bold
+        }
+
+        .tile img {
+            width: 62px;
+            height: 62px;
+            object-fit: cover;
+            border-radius: 50%;
+            margin: 6px 0 4px;
+            border: 2px solid rgba(255, 255, 255, .7)
+        }
+
+        .tile .name {
+            font-size: 12px;
+            font-weight: bold;
+            line-height: 1.15;
+            height: 28px;
+            overflow: hidden
+        }
+
+        .tile .interest {
+            font-size: 11px;
+            margin-top: 2px
+        }
+
+        .tile .nw {
+            font-size: 11px;
+            margin-top: 2px;
+            opacity: .95
+        }
+    </style>
+</head>
+
+<body>
+    <div id="login-screen">
+        <h2>3D Tiles</h2>
+        <button id="login">Sign in with Google</button>
+        <div id="msg"></div>
+    </div>
+    <div id="container"></div>
+    <div id="menu">
+        <button id="table">TABLE</button><button id="sphere">SPHERE</button>
+        <button id="helix">HELIX</button><button id="grid">GRID</button>
+    </div>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
+        import { TrackballControls } from 'three/addons/controls/TrackballControls.js';
+
+        /* ====== CLIENT, SHEET ID ====== */
+        const CLIENT_ID = '445496542548-ru1crv8l7j6r4u37004is8s2ig7c90ft.apps.googleusercontent.com';
+        const SHEET_ID = '1T7JrJlPKyM7r4kZdI_u0r-aqHN7J0pIS-25jpgE0K9A';                              
+        const RANGE = 'Sheet1';                                    
+        /* ======================================== */
+
+        const msg = document.getElementById('msg');
+        const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+        // ---------- Login + data ----------
+        function init() {
+            if (!window.google?.accounts) return setTimeout(init, 200);
+            const tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: 'https://www.googleapis.com/auth/spreadsheets.readonly',
+                callback: async (resp) => {
+                    if (resp.error) { msg.textContent = 'Login failed: ' + resp.error; return; }
+                    try {
+                        msg.style.color = '#ccc'; msg.textContent = 'Loading data...';
+                        const r = await fetch(
+                            `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(RANGE)}`,
+                            { headers: { Authorization: 'Bearer ' + resp.access_token } });
+                        const json = await r.json();
+                        if (!r.ok) throw new Error(json.error?.message || r.status);
+                        const head = json.values[0].map(h => h.trim());
+                        const data = json.values.slice(1).filter(r => r[0]).map(row => {
+                            const o = Object.fromEntries(head.map((h, i) => [h, row[i]]));
+                            return {
+                                name: o['Name'], photo: o['Photo'], age: o['Age'],
+                                country: o['Country'], interest: o['Interest'],
+                                nwText: o['Net Worth'],
+                                nw: parseFloat((o['Net Worth'] || '').replace(/[^\d.]/g, '')) || 0
+                            };
+                        });
+                        document.getElementById('login-screen').style.display = 'none';
+                        document.getElementById('menu').style.display = 'block';
+                        startViewer(data);
+                    } catch (e) { msg.style.color = '#f88'; msg.textContent = 'Error: ' + e.message; }
+                }
+            });
+            document.getElementById('login').onclick = () => tokenClient.requestAccessToken({ prompt: 'select_account' });
+        }
+        init();
+
+        // ---------- 3D viewer ----------
+        function startViewer(data) {
+            const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 1, 10000);
+            camera.position.z = 3000;
+            const scene = new THREE.Scene();
+            const renderer = new CSS3DRenderer();
+            renderer.setSize(innerWidth, innerHeight);
+            document.getElementById('container').appendChild(renderer.domElement);
+
+            const controls = new TrackballControls(camera, renderer.domElement);
+            controls.minDistance = 500; controls.maxDistance = 8000;
+
+            const objects = [], targets = { table: [], sphere: [], helix: [], grid: [] };
+
+            data.forEach(d => {
+                const el = document.createElement('div');
+                // Red < $100K, Orange $100K-$200K, Green > $200K
+                el.className = 'tile ' + (d.nw > 200000 ? 'green' : d.nw >= 100000 ? 'orange' : 'red');
+                el.innerHTML = `
+      <div class="top"><span>${esc(d.country)}</span><span>${esc(d.age)}</span></div>
+      <img src="${esc(d.photo)}" onerror="this.style.visibility='hidden'">
+      <div class="name">${esc(d.name)}</div>
+      <div class="interest">${esc(d.interest)}</div>
+      <div class="nw">${esc(d.nwText)}</div>`;
+                const obj = new CSS3DObject(el);
+                obj.position.set(Math.random() * 4000 - 2000, Math.random() * 4000 - 2000, Math.random() * 4000 - 2000);
+                scene.add(obj); objects.push(obj);
+            });
+            const N = objects.length;
+            const make = (x, y, z) => { const o = new THREE.Object3D(); o.position.set(x, y, z); return o; };
+
+            // TABLE
+            for (let i = 0; i < N; i++)
+                targets.table.push(make((i % 20) * 140 - 1330, -(Math.floor(i / 20) % 10) * 180 + 810, 0));
+
+            // SPHERE
+            for (let i = 0; i < N; i++) {
+                const phi = Math.acos(-1 + 2 * i / N), theta = Math.sqrt(N * Math.PI) * phi;
+                const o = new THREE.Object3D();
+                o.position.setFromSphericalCoords(800, phi, theta);
+                o.lookAt(o.position.clone().multiplyScalar(2));
+                targets.sphere.push(o);
+            }
+
+            // DOUBLE HELIX
+            for (let i = 0; i < N; i++) {
+                const strand = i % 2, k = Math.floor(i / 2);
+                const theta = k * 0.35 + strand * Math.PI;
+                const o = make(900 * Math.sin(theta), -(k * 16) + 800, 900 * Math.cos(theta));
+                o.lookAt(new THREE.Vector3(o.position.x * 2, o.position.y, o.position.z * 2));
+                targets.helix.push(o);
+            }
+
+            // GRID 5 x 4 x 10
+            for (let i = 0; i < N; i++)
+                targets.grid.push(make((i % 5) * 400 - 800,
+                    -(Math.floor(i / 5) % 4) * 400 + 600,
+                    Math.floor(i / 20) * 1000 - 4500));
+
+            let current = targets.table;
+            const buttons = document.querySelectorAll('#menu button');
+            const setLayout = id => {
+                current = targets[id];
+                buttons.forEach(b => b.classList.toggle('on', b.id === id));
+                // reset the view so each layout is visible from a sensible distance
+                camera.position.set(0, 0, id === 'grid' ? 5500 : id === 'table' ? 3000 : 3500);
+                camera.up.set(0, 1, 0); controls.reset?.();
+            };
+            buttons.forEach(b => b.addEventListener('click', () => setLayout(b.id)));
+
+            (function animate() {
+                requestAnimationFrame(animate);
+                objects.forEach((obj, i) => {
+                    obj.position.lerp(current[i].position, 0.06);
+                    obj.quaternion.slerp(current[i].quaternion, 0.06);
+                });
+                controls.update();
+                renderer.render(scene, camera);
+            })();
+            setLayout('table');
+
+            addEventListener('resize', () => {
+                camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+                renderer.setSize(innerWidth, innerHeight);
+            });
+        }
+    </script>
+</body>
+
+</html>
