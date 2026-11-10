@@ -4,6 +4,8 @@ An interactive 3D visualization built with Three.js (CSS3DRenderer), adapted fro
 
 **Live demo:** [https://hafiezaieman.github.io/KasatriaDT/](https://hafiezaieman.github.io/KasatriaDT/)
 
+To test it, please use [lisa@kasatria.com](lisa@kasatria.com) as google account. 
+
 ## Features
 
 - **Google Sign-In** using Google Identity Services (OAuth 2.0)
